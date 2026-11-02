@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+process.loadEnvFile('.env.local');
+const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+assert.ok(url&&key,'Falta configurar Supabase');
+const headers={apikey:key};
+const response=await fetch(`${url}/auth/v1/settings`,{headers});
+assert.equal(response.status,200,'Auth debe responder');
+const settings=await response.json();
+assert.equal(settings.external.email,true,'El proveedor Email debe estar habilitado');
+assert.equal(settings.mailer_autoconfirm,false,'Activa Confirm email en Supabase');
+console.log('OK Supabase Auth: disponible, Email habilitado y confirmación requerida');
+const profiles=await fetch(`${url}/rest/v1/profiles?select=id`,{headers});
+assert.ok([401,403].includes(profiles.status),'Un visitante no debe leer perfiles');
+console.log('OK Data API: lectura anónima de perfiles bloqueada');

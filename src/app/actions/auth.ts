@@ -6,6 +6,7 @@ import {z} from 'zod';
 import {createServerSupabase} from '@/lib/supabase/server';
 import {isConfigured,siteUrl} from '@/lib/env';
 import {trustedOrigin} from '@/lib/security';
+import {recoveryResult} from '@/lib/recovery-result';
 import {loginSchema,registerSchema,recoverySchema,passwordSchema,type ActionState} from '@/lib/validation';
 
 async function guard():Promise<ActionState|undefined> {
@@ -41,8 +42,10 @@ export async function recover(_state:ActionState,form:FormData):Promise<ActionSt
   const denied = await guard(); if (denied) return denied;
   const parsed = recoverySchema.safeParse(Object.fromEntries(form)); if (!parsed.success) return validationError(parsed);
   const supabase = await createServerSupabase(true);
-  try {await supabase.auth.resetPasswordForEmail(parsed.data.email,{redirectTo:`${siteUrl()}/auth/callback?next=/actualizar-password`});} catch {}
-  return {success:'Si existe una cuenta con ese correo, recibirás instrucciones para recuperar el acceso.'};
+  try {
+    const {error}=await supabase.auth.resetPasswordForEmail(parsed.data.email,{redirectTo:`${siteUrl()}/auth/callback?next=/actualizar-password`});
+    return recoveryResult(error);
+  } catch {return {error:'No pudimos conectar con el servicio de recuperación. Inténtalo más tarde.'};}
 }
 export async function updatePassword(_state:ActionState,form:FormData):Promise<ActionState> {
   const denied = await guard(); if (denied) return denied;
